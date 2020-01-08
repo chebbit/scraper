@@ -385,6 +385,3 @@ class MongoClient(DBClientABC):
         return last_dt
 
 
-if __name__ == "__main__":
-    pass
-
