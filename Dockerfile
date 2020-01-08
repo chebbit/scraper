@@ -2,13 +2,20 @@ FROM python:3.7-stretch
 
 LABEL maintainer="dancetj@gmail.com"
 
-RUN apt-get update && apt-get upgrade && apt-get install -y vim net-tools
+RUN apt-get update -y && \
+	apt-get install -y \
+	    nano \
+		cron \
+		supervisor && \
+	rm -rf /var/lib/apt/lists/*
+
 COPY src /app
 WORKDIR /app
 
+COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 RUN pip install -r /app/requirements.txt
+RUN echo "*/1 * * * * cd /app && /usr/local/bin/python cli.py run-scraper >> /app/cron.log 2>&1" | crontab -
 
-# ENTRYPOINT ["python", "./app/my_script.py", "my_var"]
-VOLUME /app/output
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 
-CMD ["bash"]

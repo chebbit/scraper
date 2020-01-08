@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List
-from db_clients.abc_client import News
+from clients import News
 
 
 class ABCType(ABC):
@@ -21,8 +21,8 @@ class CSVType(ABCType):
         """
 
         if not filename:
-            # saves the file to the default folder ../output
-            path = Path(__file__).parent.parent.joinpath("output")
+            # saves the file to the default folder ./output
+            path = Path(__file__).parent.joinpath("output")
             filename = path.joinpath(
                 f"output_news_{datetime.now().timestamp()}.csv"
             ).absolute()
@@ -32,13 +32,6 @@ class CSVType(ABCType):
             # for a header use fields from 'News'
             writer.writerow(list(News._fields))
             writer.writerows(news)
+            print(f'exported to {filename}')
 
-
-if __name__ == "__main__":
-    # from db_clients.postgres import PostgresClient
-    # client=database_client=PostgresClient(host='localhost', schema='test')
-    # news = client.get_news()
-    # path = Path(__file__).parent.parent.joinpath("output")
-    # CSVType().save(news)
-    pass
 

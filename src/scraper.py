@@ -3,11 +3,9 @@ import requests
 from time import mktime
 from datetime import datetime
 import hashlib
-from collections import namedtuple
 from tldextract import extract
 from parsers import ReutersParser
-from db_clients.postgres import PostgresClient
-from db_clients.mongodb import MongoClient
+from clients import PostgresClient, MongoClient
 from filetypes import ABCType, CSVType
 
 
@@ -118,9 +116,9 @@ class Feed():
                 n.download_full_description()
 
             client.save_news(news)
-            print(f"was saved {len(news)} news")
+            print(f"{len(news)} news saved to the schema {self._schema}")
         else:
-            print(f"not news was saved")
+            print(f"no new news")
 
     def export_to_file(self, from_date=None, to_date=None, filename=None):
         """
@@ -136,26 +134,3 @@ class Feed():
         self.parse()
         self.save_news_to_db()
 
-
-if __name__ == "__main__":
-    # client = PostgresClient(host='localhost')
-    client = MongoClient(host='localhost')
-    f = Feed(
-        url="http://feeds.reuters.com/reuters/topNews",
-        body_news_parser=ReutersParser(),
-        database_client=client,
-        schema="test"
-    )
-    # f.run()
-    # # print(f._database_client)
-    # # print(f.news)
-    dt_from = datetime.strptime('2020-01-07 22:30:30', '%Y-%m-%d %H:%M:%S')
-    dt_from = None
-    dt_to = datetime.strptime('2020-01-07 23:08:30', '%Y-%m-%d %H:%M:%S')
-    dt_to = None
-    f.export_to_file(from_date=dt_from, to_date=dt_to)
-
-    # db = client.db
-    # news = db['news']
-    # for n in news.find({},{ 'title': 1, 'posted': 1 }):
-    #     print(f"n={n}")

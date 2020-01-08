@@ -1,0 +1,22 @@
+version: "3.7"
+services:
+  scraper:
+    build: .
+    volumes:
+    - ./output:/app/output
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: 'scraper'
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.177.57.0/24
