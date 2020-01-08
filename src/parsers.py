@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from html2text import HTML2Text
 from abc import ABC, abstractmethod
 
+
 class ABCParser(ABC):
     """An abstract class with a single method, for cleaning data from HTML"""
 
@@ -15,10 +16,10 @@ class ReutersParser(ABCParser):
     Class for parsing body news at reuters.com
     """
 
-    headline_tag = ('h1', {'class': 'ArticleHeader_headline'})
-    body_tag = ('div', {'class': 'StandardArticleBody_body'})
+    headline_block = ('h1', {'class': 'ArticleHeader_headline'})
+    body_block = ('div', {'class': 'StandardArticleBody_body'})
 
-    garbage_tags = [
+    garbage_blocks = [
         ('div', {'class': 'RelatedCoverage_related-coverage-module'}),
     ]
 
@@ -29,16 +30,17 @@ class ReutersParser(ABCParser):
         """
         soup = BeautifulSoup(text, features="html.parser")
 
-        # cleaned target text from unused tags
-        for tag in cls.garbage_tags:
-            garbage_tag = soup.find(*tag)
-            if garbage_tag:
-                garbage_tag.clear()
+        # clear target text from unused blocks
+        for b in cls.garbage_blocks:
+            block = soup.find(*b)
+            if block:
+                block.clear()
 
-        headline = soup.find(*cls.headline_tag)
-        body = soup.find(*cls.body_tag)
+        headline = soup.find(*cls.headline_block)
+        body = soup.find(*cls.body_block)
+        # use to clear HTML tags
         parser = HTML2Text()
         parser.ignore_images = True
         parser.ignore_links = True
-        cleaned_data = parser.handle(str(headline) + str(body))
-        return cleaned_data
+        data = parser.handle(str(headline) + str(body))
+        return data

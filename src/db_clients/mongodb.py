@@ -1,12 +1,15 @@
-from .abc_client import DBClientABC, Feed
 import pymongo
+from datetime import datetime
+from typing import List
+from .abc_client import DBClientABC, Feed, News
 
 
 class MongoClient(DBClientABC):
     """
     Client for working with MongoDB
     """
-    def __init__(self, host="localhost", port=27017, schema="rsscraper"):
+
+    def __init__(self, host="mongo_scraper", port=27017, schema="rsscraper"):
         self._host = host
         self._port = port
         self._connection = None
@@ -37,6 +40,7 @@ class MongoClient(DBClientABC):
         db = self.db
         feeds = db["feeds"]
         result = feeds.find_one({"url": url})
+        print(f"result={result}")
         if not result:
             result = self.save_feed(url)
         return Feed(result["_id"], result["url"], result["parser"])
@@ -58,8 +62,32 @@ class MongoClient(DBClientABC):
         ]
         result = collection.insert_many(data)
 
-    def get_news(self) -> dict:
-        pass
+    def get_news(self, from_date: datetime = None, to_date: datetime = None ) -> List[News]:
+        db = self.db
+        news = db["news"]
+        result = []
+
+        if from_date and to_date:
+            documents = news.find({'posted': {'$lt': to_date, '$gt': from_date}})
+        elif to_date:
+            documents = news.find({'posted': {'$lt': to_date}})
+        elif from_date:
+            documents = news.find({'posted': {'$gt': from_date}})
+        else:
+            documents = news.find()
+
+        for n in documents:
+            result.append(
+                News(
+                    n["title"],
+                    n["short_description"],
+                    n["posted"],
+                    n["url"],
+                    n["hash"],
+                    n["full_description"],
+                )
+            )
+        return result
 
     def create_schema(self, name: str = None) -> None:
         if name:
@@ -85,7 +113,14 @@ class MongoClient(DBClientABC):
     def get_last_posted_date(self):
         db = self.db
         news = db["news"]
-        last_dt = news.find().sort("posted", pymongo.DESCENDING).limit(1)[0]["posted"]
+        last_dt = None
+        try:
+            last_dt = (
+                news.find().sort("posted", pymongo.DESCENDING).limit(1)[0]["posted"]
+            )
+        except IndexError:
+            pass
+        print(f"last_dt={last_dt}")
         return last_dt
 
 

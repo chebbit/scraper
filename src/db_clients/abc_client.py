@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from typing import List
+from datetime import datetime
 
 # tuple for visual using data get from db
-Feed = namedtuple('Feed', ['id', 'url', 'parser'])
+Feed = namedtuple("Feed", ["id", "url", "parser"])
+News = namedtuple("News", ['title', 'short_description', 'posted', 'url', 'hash', 'full_description'])
 
 class DBClientABC(ABC):
     """
@@ -22,7 +25,7 @@ class DBClientABC(ABC):
         pass
 
     @abstractmethod
-    def get_news(self) -> dict:
+    def get_news(self, from_date: datetime = None, to_date: datetime = None ) -> List[News]:
         pass
 
     @abstractmethod

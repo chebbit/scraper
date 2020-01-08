@@ -8,12 +8,14 @@ from tldextract import extract
 from parsers import ReutersParser
 from db_clients.postgres import PostgresClient
 from db_clients.mongodb import MongoClient
+from filetypes import ABCType, CSVType
 
 
 def save_to_file(data, filename=None):
     pass
 
-class News():
+
+class News:
     """
     A class for interacting with news, used as a container
     """
@@ -24,32 +26,40 @@ class News():
         self.short_description = short_description
         self.posted = posted
         self.url = url
-        self.set_full_description = None
+        self.full_description = None
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return f"(\"{self.title}\", \"{self.posted}\", \"{self.url}\")"
 
     @property
     def hash(self):
         # generate hash by news URL
-        return hashlib.sha1(self.url.encode("utf8")).hexdigest(),
+        return (hashlib.sha1(self.url.encode("utf8")).hexdigest(),)
 
     def download_full_description(self):
         # download news body from news URL
         r = requests.get(self.url)
         if r.status_code == 200:
             body_parser = self.feed.body_news_parser
-            self.full_description = body_parser().cleaned_data(r.text)
-
+            self.full_description = body_parser.cleaned_data(r.text)
 
 
 class Feed():
 
     """Class for working with rss, parsing and saving in the database"""
 
-    def __init__(self, url, body_news_parser, database_client, schema="rsscraper"):
+    def __init__(self, url, body_news_parser, database_client, schema=None, filetype: ABCType=None):
         self._url = url
         self.body_news_parser = body_news_parser
-        self._database_client = database_client(schema=schema)
+        # use domain name as name of schema if schema is None
+        self._schema = schema or extract(url).domain
+        database_client._schema = self._schema
+        self._database_client = database_client
         self._news = []
-
+        self._filetype = filetype or CSVType()
 
     @property
     def id(self):
@@ -59,7 +69,6 @@ class Feed():
             feed = client.get_feed_by_url(url=self._url)
             self._id = feed.id
         return self._id
-
 
     @property
     def news(self):
@@ -85,7 +94,8 @@ class Feed():
 
         for item in feed.entries:
             news.append(
-                News(self,
+                News(
+                    self,
                     item.title,
                     item.description,
                     datetime.fromtimestamp(mktime(item.published_parsed)),
@@ -95,22 +105,57 @@ class Feed():
 
         self._news = news
 
-    def save_news_to_db(self, by_user: bool= False) -> None:
+    def save_news_to_db(self, by_user: bool = False) -> None:
         """ saving news to database, will be saved only new news"""
         client = self._database_client
         news = self.only_new_news
-        client.save_scraper_info((datetime.now(), len(news), by_user, self._url, self.id))
+        client.save_scraper_info(
+            (datetime.now(), len(news), by_user, self._url, self.id)
+        )
         if news:
-            # download fultext description news by url for all item in list
+            # download fulltext description news by url for all item in list
             for n in self.news:
                 n.download_full_description()
 
             client.save_news(news)
+            print(f"was saved {len(news)} news")
+        else:
+            print(f"not news was saved")
 
-    def save_as_csv(self):
-        pass
+    def export_to_file(self, from_date=None, to_date=None, filename=None):
+        """
+        Get data from database and saves it to file
+        """
+        client = self._database_client
+        news = client.get_news(from_date, to_date)
+        print(f"exported {len(news)} news")
+        self._filetype.save(news, filename)
 
-    def test(self):
+
+    def run(self):
         self.parse()
         self.save_news_to_db()
 
+
+if __name__ == "__main__":
+    # client = PostgresClient(host='localhost')
+    client = MongoClient(host='localhost')
+    f = Feed(
+        url="http://feeds.reuters.com/reuters/topNews",
+        body_news_parser=ReutersParser(),
+        database_client=client,
+        schema="test"
+    )
+    # f.run()
+    # # print(f._database_client)
+    # # print(f.news)
+    dt_from = datetime.strptime('2020-01-07 22:30:30', '%Y-%m-%d %H:%M:%S')
+    dt_from = None
+    dt_to = datetime.strptime('2020-01-07 23:08:30', '%Y-%m-%d %H:%M:%S')
+    dt_to = None
+    f.export_to_file(from_date=dt_from, to_date=dt_to)
+
+    # db = client.db
+    # news = db['news']
+    # for n in news.find({},{ 'title': 1, 'posted': 1 }):
+    #     print(f"n={n}")

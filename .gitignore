@@ -1,5 +1,7 @@
 .ropeproject/
 
+*.csv
+
 *.ipynb
 .ipynb_checkpoints/
 # Created by https://www.gitignore.io
